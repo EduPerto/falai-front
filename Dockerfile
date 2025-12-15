@@ -44,12 +44,16 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Copy necessary files from builder
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
 # Copy built Next.js application
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Copy entrypoint script for runtime env generation
+COPY --chown=nextjs:nodejs scripts/generate-env.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/generate-env.sh
 
 # Switch to non-root user
 USER nextjs
@@ -59,6 +63,9 @@ EXPOSE 3000
 
 ENV PORT=3000 \
     HOSTNAME="0.0.0.0"
+
+# Use entrypoint script to generate __ENV.js at runtime
+ENTRYPOINT ["/usr/local/bin/generate-env.sh"]
 
 # Start the application
 CMD ["npm", "start"]
