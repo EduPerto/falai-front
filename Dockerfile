@@ -51,9 +51,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-# Copy entrypoint script for runtime env generation
-COPY --chown=nextjs:nodejs scripts/generate-env.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/generate-env.sh
+# Create entrypoint script for runtime env generation
+RUN echo '#!/bin/sh' > /usr/local/bin/generate-env.sh && \
+    echo 'API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:8200}"' >> /usr/local/bin/generate-env.sh && \
+    echo 'echo "window.__ENV = { NEXT_PUBLIC_API_URL: \"$API_URL\" };" > /app/public/__ENV.js' >> /usr/local/bin/generate-env.sh && \
+    echo 'echo "Generated __ENV.js with NEXT_PUBLIC_API_URL=$API_URL"' >> /usr/local/bin/generate-env.sh && \
+    echo 'exec "$@"' >> /usr/local/bin/generate-env.sh && \
+    chmod +x /usr/local/bin/generate-env.sh
 
 # Switch to non-root user
 USER nextjs
